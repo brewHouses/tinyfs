@@ -50,12 +50,12 @@ static int tinyfs_readdir(struct file *filp, struct dir_context *ctx)
     for(i = 0; i < blk->dir_children; i++)
     {
         // ctx->actotr(dirent, entry[i].filename, MAXLEN, pos, entry[i].idx, DT_UNKNOWN);
-	// ctx->actor(ctx, name, namelen, ctx->pos, ino, type) == 0
-	printk("tinyfs: %d\n", i);
-	ctx->actor(ctx, entry[i].filename, MAXLEN, ctx->pos, entry[i].idx, DT_UNKNOWN);
+	    // ctx->actor(ctx, name, namelen, ctx->pos, ino, type) == 0
+    	printk("tinyfs: %d\n", i);
+	    ctx->actor(ctx, entry[i].filename, MAXLEN, ctx->pos, entry[i].idx, DT_UNKNOWN);
         filp->f_pos += sizeof(struct dir_entry);
         pos += sizeof(struct dir_entry);
-	ctx->pos = pos;
+	    ctx->pos = pos;
     }
     return 0;
 }
@@ -91,19 +91,22 @@ ssize_t tinyfs_write( struct file * filp, const char __user * buf, size_t len, l
         return -EFAULT;
     }
     *ppos += len;
-    blk ->file_size = *ppos;
+    if (*ppos > blk->file_size)
+        blk ->file_size = *ppos;
     return len;
 }
 
 const struct file_operations tinyfs_file_operations = {
-            .read = tinyfs_read,
-            .write = tinyfs_write,
+        .read = tinyfs_read,
+        .write = tinyfs_write,
+	    .llseek = generic_file_llseek
 };
 
 const struct file_operations tinyfs_dir_operations = {
-            .owner = THIS_MODULE,
-            //.readdir = tinyfs_readdir,
-            .iterate_shared = tinyfs_readdir,
+        .owner = THIS_MODULE,
+        // .readdir = tinyfs_readdir,
+        .iterate_shared = tinyfs_readdir,
+	    .llseek = generic_file_llseek
 };
 
 // 创建文件的实现
