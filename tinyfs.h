@@ -22,7 +22,7 @@ struct file_blk
         uint8_t file_size;
         uint8_t dir_children;
     };
-    char data[0];
+    char data[MAX_BLOCKSIZE];
 };
 
 
