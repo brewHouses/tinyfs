@@ -246,16 +246,16 @@ int tinyfs_unlink(struct inode * dir, struct dentry * dentry)
         }
     }
     blk->busy = 0;
+    curr_count--;
     return simple_unlink(dir, dentry);
 }
 
-static struct inode_operations tinyfs_inode_ops =
-        {
-            .create = tinyfs_create,
-            .lookup = tinyfs_lookup,
-            .mkdir = tinyfs_mkdir,
-            .rmdir = tinyfs_rmdir,
-            .unlink = tinyfs_unlink,
+static struct inode_operations tinyfs_inode_ops = {
+    .create = tinyfs_create,
+    .lookup = tinyfs_lookup,
+    .mkdir = tinyfs_mkdir,
+    .rmdir = tinyfs_rmdir,
+    .unlink = tinyfs_unlink,
 };
 
 int tinyfs_fill_super(struct super_block * sb, void * data, int silent)
