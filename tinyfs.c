@@ -46,12 +46,10 @@ static int tinyfs_readdir(struct file *filp, struct dir_context *ctx)
     }
     // 循环获取一个目录的所有文件的文件名
     entry = (struct dir_entry *)&blk->data[0];
-    printk("tinfs: blk->dir_children= %d\n", blk->dir_children);
     for(i = 0; i < blk->dir_children; i++)
     {
         // ctx->actotr(dirent, entry[i].filename, MAXLEN, pos, entry[i].idx, DT_UNKNOWN);
         // ctx->actor(ctx, name, namelen, ctx->pos, ino, type) == 0
-        printk("tinyfs: %d\n", i);
         ctx->actor(ctx, entry[i].filename, MAXLEN, ctx->pos, entry[i].idx, DT_UNKNOWN);
         filp->f_pos += sizeof(struct dir_entry);
         pos += sizeof(struct dir_entry);
@@ -122,7 +120,7 @@ static int tinyfs_do_create( struct inode * dir, struct dentry * dentry, umode_t
     {
         return -ENOSPC;
     }
-    if (!S_ISDIR( mode) && !S_ISREG( mode))
+    if (!S_ISDIR(mode) && !S_ISREG(mode) && !S_ISLNK(mode))
     {
         return -EINVAL;
     }
@@ -140,6 +138,7 @@ static int tinyfs_do_create( struct inode * dir, struct dentry * dentry, umode_t
     inode->i_ino = idx;
     blk->mode = mode;
     curr_count++;
+    // TODO
     if(S_ISDIR(mode))
     {
         blk->dir_children =0;
@@ -250,12 +249,48 @@ int tinyfs_unlink(struct inode * dir, struct dentry * dentry)
     return simple_unlink(dir, dentry);
 }
 
+static int tinyfs_symlink (struct inode * dir, struct dentry * dentry, const char * symname) {
+    int ret, i;
+    struct file_blk * blk;
+    char * buffer;
+    int pos = 0;
+    int inum = 0;
+    //if (ret = tinyfs_do_create(dir, dentry, S_IFLNK))
+    if (ret = tinyfs_do_create(dir, dentry, S_IFREG))
+        return ret;
+    blk = dir->i_private;
+    buffer = (char *)&blk->data[0];
+    printk("tinyfs: %d\n", blk->dir_children);
+    for(i = 0; i < blk->dir_children; i++)
+    {
+        printk("xxxxxxxx???????????????????????????????????????");
+        printk("tinyfs: %s, len = %ld\n", dentry->d_name.name, strlen(dentry->d_name.name));
+        printk("tinyfs: %s, len = %ld\n", ((struct dir_entry *)(buffer+pos))->filename, strlen(((struct dir_entry *)(buffer+pos))->filename));
+        if (!strcmp(((struct dir_entry *)(buffer+pos))->filename, dentry->d_name.name)) {
+            printk("11111111111111111111111111111111111111111111111");
+            inum = ((struct dir_entry *)(buffer+pos))->idx;
+            //break;
+        }
+        pos += sizeof(struct dir_entry);
+    }
+    /*
+    if (! inum) {
+        printk("inum = 0\n");
+        return -EFAULT;
+    }*/
+    strcpy((char*)(block[inum].data), symname);
+    return 0;
+}
+
+
+
 static struct inode_operations tinyfs_inode_ops = {
     .create = tinyfs_create,
     .lookup = tinyfs_lookup,
     .mkdir = tinyfs_mkdir,
     .rmdir = tinyfs_rmdir,
     .unlink = tinyfs_unlink,
+    .symlink = tinyfs_symlink
 };
 
 int tinyfs_fill_super(struct super_block * sb, void * data, int silent)
