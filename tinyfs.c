@@ -4,7 +4,11 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/time.h>
-#define CURRENT_TIME current_kernel_time()
+#include <linux/version.h>
+#if LINUX_VERSION_CODE == KERNEL_VERSION(4,12,14)
+    #define CURRENT_TIME current_kernel_time()
+#endif
+
 
 #include "tinyfs.h"
 
@@ -103,7 +107,7 @@ const struct file_operations tinyfs_file_operations = {
 const struct file_operations tinyfs_dir_operations = {
         .owner = THIS_MODULE,
         // .readdir = tinyfs_readdir,
-        .iterate_shared = tinyfs_readdir,
+        .iterate = tinyfs_readdir,
 	    .llseek = generic_file_llseek
 };
 
