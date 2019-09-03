@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 function check_exit_status() {
 	if [ $? -eq 0 ]
 	then
@@ -8,7 +10,20 @@ function check_exit_status() {
 	fi
 }
 
-cd /root/tinyfs
+# test if the first para is null
+if [ -n "$1" ]
+then
+    MOUNT_POINT=$1
+else
+    echo "No mount point specified, /mnt/tinyfs will be used"
+    MOUNT_POINT=/mnt/tinyfs
+fi
+
+if [ ! -d $MOUNT_POINT ]
+then
+    mkdir $MOUNT_POINT
+    check_exit_status "mkdir $MOUNT_POINT"
+fi
 
 make
 check_exit_status make
@@ -29,10 +44,8 @@ else
 fi
 
 echo "insmod tinyfs..."
-insmod /root/tinyfs/tinyfs.ko
+insmod ./tinyfs.ko
 check_exit_status insmod
 
 mount -t tinyfs none /mnt/tinyfs
 check_exit_status mount
-
-cd /mnt/tinyfs

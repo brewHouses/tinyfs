@@ -108,17 +108,28 @@ ssize_t tinyfs_write( struct file * filp, const char __user * buf, size_t len, l
     return len;
 }
 
+// The implement of read the link from soft link file
+const char *tinyfs_get_link(struct dentry *dentry, struct inode *inode,
+              struct delayed_call *callback)
+{
+    return ((struct file_blk *)(inode->i_private))->data;
+}
+
 const struct file_operations tinyfs_file_operations = {
-        .read = tinyfs_read,
-        .write = tinyfs_write,
-        .llseek = generic_file_llseek
+    .read = tinyfs_read,
+    .write = tinyfs_write,
+    .llseek = generic_file_llseek
 };
 
 const struct file_operations tinyfs_dir_operations = {
-        .owner = THIS_MODULE,
-        // .readdir = tinyfs_readdir,
-        .iterate = tinyfs_readdir,
-	    .llseek = generic_file_llseek
+    .owner = THIS_MODULE,
+    // .readdir = tinyfs_readdir,
+    .iterate = tinyfs_readdir,
+    .llseek = generic_file_llseek
+};
+
+const struct inode_operations tinyfs_symlink_inode_ops = {
+    .get_link = tinyfs_get_link
 };
 
 // 创建文件的实现
@@ -144,7 +155,10 @@ static int tinyfs_do_create( struct inode * dir, struct dentry * dentry, umode_t
         return -ENOMEM;
     }
     inode->i_sb = sb;
-    inode->i_op = &tinyfs_inode_ops;
+    if (S_ISDIR(mode) || S_ISREG(mode))
+        inode->i_op = &tinyfs_inode_ops;
+    if (S_ISLNK(mode))
+        inode->i_op = &tinyfs_symlink_inode_ops;
     inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
     idx = get_block();
     // 获取一个空闲的文件块保存新文件
@@ -193,7 +207,10 @@ static struct inode * tinyfs_iget(struct super_block * sb, int idx)
     inode = new_inode(sb);
     inode -> i_ino = idx;
     inode -> i_sb = sb;
-    inode -> i_op = &tinyfs_inode_ops; 
+    if (S_ISLNK(inode->i_mode))
+        inode -> i_op = &tinyfs_symlink_inode_ops;
+    else
+        inode -> i_op = &tinyfs_inode_ops;
     
     blk = &block[idx];
     if(S_ISDIR(blk->mode))
@@ -269,30 +286,25 @@ static int tinyfs_symlink (struct inode * dir, struct dentry * dentry, const cha
     char * buffer;
     int pos = 0;
     int inum = 0;
-    //if (ret = tinyfs_do_create(dir, dentry, S_IFLNK))
-    if (ret = tinyfs_do_create(dir, dentry, S_IFREG))
+    ret = tinyfs_do_create(dir, dentry, S_IFLNK|0544);
+    if (ret)
         return ret;
     blk = dir->i_private;
     buffer = (char *)&blk->data[0];
-    printk("tinyfs: %d\n", blk->dir_children);
     for(i = 0; i < blk->dir_children; i++)
     {
-        printk("xxxxxxxx???????????????????????????????????????");
-        printk("tinyfs: %s, len = %ld\n", dentry->d_name.name, strlen(dentry->d_name.name));
-        printk("tinyfs: %s, len = %ld\n", ((struct dir_entry *)(buffer+pos))->filename, strlen(((struct dir_entry *)(buffer+pos))->filename));
-        if (!strcmp(((struct dir_entry *)(buffer+pos))->filename, dentry->d_name.name)) {
-            printk("11111111111111111111111111111111111111111111111");
+        // Attention that the function `printk` is line buffer!
+        if (strcmp(((struct dir_entry *)(buffer+pos))->filename, dentry->d_name.name) == 0) {
             inum = ((struct dir_entry *)(buffer+pos))->idx;
-            //break;
+            break;
         }
         pos += sizeof(struct dir_entry);
     }
-    /*
     if (! inum) {
-        printk("inum = 0\n");
         return -EFAULT;
-    }*/
-    strcpy((char*)(block[inum].data), symname);
+    }
+    strcpy((char*)(&block[inum].data[0]), symname);
+    block[inum].file_size = strlen(symname);
     return 0;
 }
 
