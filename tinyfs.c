@@ -115,10 +115,22 @@ const char *tinyfs_get_link(struct dentry *dentry, struct inode *inode,
     return ((struct file_blk *)(inode->i_private))->data;
 }
 
+int tinyfs_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+{
+    int ret;
+
+    ret = generic_file_fsync(file, start, end, datasync);
+    if (ret == -EIO)
+        /* We don't really know where the IO error happened... */
+        printk("detected IO error when writing metadata buffers\n");
+    return ret;
+}
+
 const struct file_operations tinyfs_file_operations = {
     .read = tinyfs_read,
     .write = tinyfs_write,
-    .llseek = generic_file_llseek
+    .llseek = generic_file_llseek,
+    .fsync = tinyfs_fsync
 };
 
 const struct file_operations tinyfs_dir_operations = {
