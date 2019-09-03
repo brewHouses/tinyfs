@@ -5,7 +5,17 @@
 #include <linux/uaccess.h>
 #include <linux/time.h>
 #include <linux/version.h>
-#if LINUX_VERSION_CODE == KERNEL_VERSION(4,12,14)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+
+struct timespec64 current_kernel_time(void) {
+    struct timespec64 now;
+    ktime_get_coarse_real_ts64(&now);
+    return now;
+}
+
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,14)
     #define CURRENT_TIME current_kernel_time()
 #endif
 
