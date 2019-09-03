@@ -5,6 +5,9 @@
 #include <linux/uaccess.h>
 #include <linux/time.h>
 #include <linux/version.h>
+#include <linux/mm.h>
+#include <linux/pagemap.h>
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 
 struct timespec64 current_kernel_time(void) {
@@ -115,9 +118,26 @@ const char *tinyfs_get_link(struct dentry *dentry, struct inode *inode,
     return ((struct file_blk *)(inode->i_private))->data;
 }
 
-int tinyfs_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+int tinyfs_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
 {
-    return 0;
+    int ret = 0;
+    // all because of vim
+
+    struct radix_tree_root page_tree;
+    struct radix_tree_node *the_only_node;
+    struct page *the_only_page;
+    page_tree = filp->f_mapping->page_tree;
+    /*
+    the_only_node = radix_tree_lookup(&page_tree, 0);
+    the_only_page = (struct page*)rcu_dereference(*(the_only_node->slots));
+    lock_page(the_only_page);
+    if (!PageDirty(the_only_page)) {
+        printk("hahaha, woshinibaba\n");
+    }
+    */
+
+
+    return ret;
 }
 
 const struct file_operations tinyfs_file_operations = {
