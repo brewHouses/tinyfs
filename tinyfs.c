@@ -147,6 +147,9 @@ static int tinyfs_do_create( struct inode * dir, struct dentry * dentry, umode_t
     struct file_blk * blk, *pblk;
     int idx;
     sb = dir->i_sb;
+    if (strlen(dentry->d_name.name) > MAXLEN-1){
+        return -E2BIG;
+    }
     if (curr_count >= MAX_FILES)
     {
         return -ENOSPC;

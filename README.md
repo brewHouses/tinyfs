@@ -22,4 +22,4 @@ cd /mnt/tinyfs
 
 ## TODO
 - Split the file `tinyfs.c`
-- Add hard link support
+- Add . and .. when create a new directory
