@@ -161,8 +161,12 @@ static int tinyfs_do_create( struct inode * dir, struct dentry * dentry, umode_t
         return -ENOMEM;
     }
     inode->i_sb = sb;
-    if (S_ISDIR(mode) || S_ISREG(mode))
+    if (S_ISDIR(mode)) {
         inode->i_op = &tinyfs_inode_ops;
+    }
+    if (S_ISREG(mode)) {
+        inode->i_op = &tinyfs_inode_ops;
+    }
     if (S_ISLNK(mode))
         inode->i_op = &tinyfs_symlink_inode_ops;
     inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
@@ -259,6 +263,24 @@ int tinyfs_rmdir(struct inode * dir, struct dentry * dentry)
     return simple_rmdir(dir, dentry);
 }
 
+static int tinyfs_link (struct dentry * old_dentry, struct inode * dir, struct dentry *dentry) {
+    struct inode *inode = d_inode(old_dentry);
+    struct file_blk * pblk;
+    int idx;
+    struct dir_entry * entry;
+
+    pblk =(struct file_blk *)dir->i_private;
+    entry = (struct dir_entry *)&pblk->data[0];
+    entry += pblk->dir_children;
+    pblk->dir_children++;
+    idx = inode->i_ino;
+    entry->idx = idx;
+    strcpy(entry->filename, dentry->d_name.name);
+    //d_add(dentry, inode);
+    return 0;
+}
+
+
 int tinyfs_unlink(struct inode * dir, struct dentry * dentry)
 {
     int i;
@@ -314,14 +336,14 @@ static int tinyfs_symlink (struct inode * dir, struct dentry * dentry, const cha
     return 0;
 }
 
-
-
+// 是不是要把file与dir的inode_operations区分开
 static struct inode_operations tinyfs_inode_ops = {
     .create = tinyfs_create,
     .lookup = tinyfs_lookup,
     .mkdir = tinyfs_mkdir,
     .rmdir = tinyfs_rmdir,
     .unlink = tinyfs_unlink,
+    .link = tinyfs_link,
     .symlink = tinyfs_symlink
 };
 
@@ -336,7 +358,7 @@ int tinyfs_fill_super(struct super_block * sb, void * data, int silent)
     root_inode ->i_op = &tinyfs_inode_ops;
     root_inode ->i_fop =  &tinyfs_dir_operations;
     root_inode->i_atime =root_inode->i_mtime =root_inode->i_ctime =CURRENT_TIME;
-    block[1].mode =mode;
+    block[1].mode = mode;
     block[1].dir_children =0;
     block[1].idx =1;
     block[1].busy = 1;
