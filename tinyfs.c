@@ -339,6 +339,49 @@ static int tinyfs_symlink (struct inode * dir, struct dentry * dentry, const cha
     return 0;
 }
 
+// still have bug when use vim
+static int tinyfs_rename (struct inode * old_dir, struct dentry * old_dentry,
+            struct inode * new_dir, struct dentry * new_dentry,
+            unsigned int flags) {
+    int i, err, idx=-1;
+    struct file_blk* old_dir_block, *new_dir_block;
+    struct dir_entry * entry;
+    struct inode * inode = old_dentry->d_inode;
+    old_dir_block = (struct file_blk*)old_dir->i_private;
+    new_dir_block = (struct file_blk*)new_dir->i_private;
+
+    // 更新其上层目录
+    entry = (struct dir_entry *)old_dir_block->data;
+    for (i = 0; i < old_dir_block->dir_children; i++)
+    {
+        if (!strcmp(entry[i].filename, old_dentry->d_name.name))
+        {
+            int j;
+            idx = entry[i].idx;
+            for (j = i; j < old_dir_block->dir_children - 1; j++)
+            {
+                memcpy(&entry[j] , &entry[j +1], sizeof(struct dir_entry));
+            }
+            old_dir_block->dir_children--;
+            break;
+        }
+    }
+    err = simple_unlink(old_dir, old_dentry);
+    if (err) {
+        return err;
+    }
+
+    entry = (struct dir_entry *)new_dir_block->data;
+    entry += (new_dir_block->dir_children);
+    new_dir_block->dir_children += 1;
+    if (idx!=-1)
+        entry->idx = idx;
+    strcpy(entry->filename, new_dentry->d_name.name);
+    //new_dentry->d_inode = inode;
+    return simple_link(old_dentry, new_dir, new_dentry);
+    //d_add(dentry, inode);
+}
+
 // 是不是要把file与dir的inode_operations区分开
 static struct inode_operations tinyfs_inode_ops = {
     .create = tinyfs_create,
@@ -347,7 +390,8 @@ static struct inode_operations tinyfs_inode_ops = {
     .rmdir = tinyfs_rmdir,
     .unlink = tinyfs_unlink,
     .link = tinyfs_link,
-    .symlink = tinyfs_symlink
+    .symlink = tinyfs_symlink,
+    .rename = tinyfs_rename
 };
 
 int tinyfs_fill_super(struct super_block * sb, void * data, int silent)
